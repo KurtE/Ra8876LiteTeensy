@@ -43,7 +43,7 @@
 #include "Arduino.h"
 #include "RA8876_t41_p_default_pins.h"
 
-#define READS_USE_DIGITAL_WRITE
+//#define READS_USE_DIGITAL_WRITE
 
 inline void RA8876_t41_p::RDHigh() {
 #ifdef READS_USE_DIGITAL_WRITE
@@ -785,6 +785,97 @@ ru8 RA8876_t41_p::lcdDataRead(bool finalize) {
     else
         return (data >> 8) & 0xff;
 }
+
+
+//**************************************************************//
+// Lets try to read in a rectangle from the frames memory...
+// This assumes all of the offsets and clipping was done 
+// before calling.
+//**************************************************************//
+void RA8876_t41_p::readRectOneShot(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t *pcolors) {
+    activeWindowXY(x, y);
+    activeWindowWH(w, h);
+        check2dBusy();
+        ramAccessPrepare();
+    graphicMode(true);
+
+    setPixelCursor(x, y);
+    ramAccessPrepare();
+
+    while (WR_IRQTransferDone == false) {
+    } // Wait for any IRQ transfers to complete
+
+    FlexIO_Config_SnglBeat_Read();
+
+    CSLow();  // Must to go low after config above.
+    DCHigh(); // Set HIGH for data read
+    //RDLow(); // Set RD pin low manually
+
+    while (0 == (p->SHIFTSTAT & (1 << 3))) {
+    }
+    // Don't know about 16 bit mode if we will have part of pixel here? 
+    uint16_t dummy __attribute__((unused)) = p->SHIFTBUFBYS[3];
+    //Serial.printf("dummy:%x\n", dummy);
+    //delayMicroseconds(1000); // delay(1);
+#if 0
+    // Experiment Try reading LCD_Status.
+    elapsedMicros em;
+    // Lets loop now to read status... so need DC LOW
+    CSHigh();  // Must to go low after config above.
+    DCLow();
+    microSecondDelay();
+    // clear out their status 
+    p->SHIFTSTAT = (1 << 3);
+    p->SHIFTERR = (1 << 3);
+
+    uint8_t status = 0xff;
+    uint8_t previous_status;
+    while (em < 1000) {
+        CSLow();
+        microSecondDelay();
+
+        while (0 == (p->SHIFTSTAT & (1 << 3))) {
+        }
+        previous_status = status;
+        uint8_t status = p->SHIFTBUFBYS[3];
+        CSHigh();
+        if ((status & 0x10) == 0) {
+            Serial.printf("@@%x %x %u\n", previous_status, status, (uint32_t)em);
+            break;
+        }
+    }
+    DCHigh(); // change back to reading data...
+    CSLow();
+    microSecondDelay();
+    p->SHIFTSTAT = (1 << 3);
+    p->SHIFTERR = (1 << 3);
+#endif    
+    // Serial.printf("lcdDataread(): Dummy 0x%4.4x, data 0x%4.4x\n", dummy, data);
+    uint32_t count_pixels = w * h;
+    while (count_pixels--) {    
+        while (0 == (p->SHIFTSTAT & (1 << 3))) {
+        }
+        if (_bus_width == 16) {
+            *pcolors++ = p->SHIFTBUFBYS[3];
+        } else {
+            uint8_t low_byte = p->SHIFTBUFBYS[3];
+            while (0 == (p->SHIFTSTAT & (1 << 3))) {
+            }
+            *pcolors++ = (uint16_t)(p->SHIFTBUFBYS[3] << 8) | low_byte;
+        }
+    }
+    
+    RDHigh(); // Set RD pin high manually
+
+    CSHigh();  
+
+    // Clear active window area
+    activeWindowXY(0, 0);
+    activeWindowWH(_width, _height);
+    // Set FlexIO back to Write mode
+    //FlexIO_Config_SnglBeat();
+}
+
 
 //**************************************************************//
 // Read RA8876 status register 8bit data R/W only. 8/16 bit bus.

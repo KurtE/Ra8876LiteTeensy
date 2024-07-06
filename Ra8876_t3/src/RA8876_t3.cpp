@@ -260,6 +260,41 @@ ru8 RA8876_t3::lcdRegDataRead(ru8 reg, bool finalize) {
 }
 
 //**************************************************************//
+// Lets try to read in a rectangle from the frames memory...
+// This assumes all of the offsets and clipping was done 
+// before calling.
+//**************************************************************//
+void RA8876_t3::readRectOneShot(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t *pcolors) {
+    selectScreen(currentPage);
+    activeWindowXY(x, y);
+    activeWindowWH(w, h);
+    graphicMode(true);
+    setPixelCursor(x, y); // set memory address
+    ramAccessPrepare();   // Setup SDRAM Access
+
+    ru16 _data = (RA8876_SPI_DATAREAD16 | 0x00);
+
+    startSend();
+    uint16_t dummy __attribute__((unused)) = _pspi->transfer16(_data);
+    uint32_t count_pixels = w * h;
+    while (count_pixels--) {    
+        *pcolors++ = _pspi->transfer16(_data);
+//        uint8_t low_byte =  _pspi->transfer16(_data);
+//        *pcolors++ = (uint16_t)( (_pspi->transfer16(_data) & 0xff)) | low_byte;
+    }
+
+    endSend(true);
+    // Clear active window area
+    activeWindowXY(0, 0);
+    activeWindowWH(_width, _height);
+    // Set FlexIO back to Write mode
+    //FlexIO_Config_SnglBeat();
+
+    Serial.printf("Dummy:%x\n", dummy);
+}
+
+
+//**************************************************************//
 // support SPI interface to write 16bpp data after Regwrite 04h
 //**************************************************************//
 void RA8876_t3::lcdDataWrite16bbp(ru16 data, bool finalize) {

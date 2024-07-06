@@ -119,6 +119,7 @@ class RA8876_t41_p : public RA8876_common {
     void lcdDataWrite16bbp(ru16 data, bool finalize = true);
     void lcdDataWrite16(uint16_t data, bool finalize = true);
     void LCD_CmdWrite(unsigned char cmd);
+    void readRectOneShot(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t *pcolors);
 
     /*BTE function*/
     void bteMpuWriteWithROPData8(ru32 s1_addr, ru16 s1_image_width, ru16 s1_x, ru16 s1_y, ru32 des_addr, ru16 des_image_width,
