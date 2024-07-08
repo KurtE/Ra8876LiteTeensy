@@ -15,8 +15,7 @@
 // Set which Display we are using and at what speed
 // Currently I have options for both MICROMOD and T42 to make it
 // easier for testing
-
-#define use_spi
+//#define use_spi
 
 #include <MemoryHexDump.h>
 #include <Adafruit_GFX.h>  // Core graphics library
@@ -104,9 +103,11 @@ void setup() {
 
 #if defined(use_spi)
     tft.begin();
+    tft.setBusWidth(8);
 #else
     tft.begin(20);
 #endif
+
     //  tft.setFrameBuffer(tft_frame_buffer);
     tft.backlight(true);
 
@@ -217,7 +218,7 @@ void drawTestScreen() {
 #define BAND_HEIGHT 20
 #define BAND_START_X 200
 #define BAND_START_Y 259
-    uint16_t band_colors[] = { RED, GREEN, PINK, BLACK, WHITE, YELLOW, CYAN, BLUE };
+    uint16_t band_colors[] = { RED, GREEN, PINK, DARKGREY, WHITE, YELLOW, CYAN, BLUE };
 #define COUNT_BANDS (sizeof(band_colors) / sizeof(band_colors[0]))
     Serial.println("Band colors: ");
     for (uint8_t i = 0; i < COUNT_BANDS; i++) {
@@ -313,6 +314,15 @@ void drawTestScreen() {
     memset(pb + MEMSET_CNT * 2, 2, MEMSET_CNT);
     memset(pb + MEMSET_CNT * 3, 3, MEMSET_CNT);
     tft.writeRect8BPP(100, 400, 100, (4 * MEMSET_CNT) / 100, pb, palette);
+
+
+    tft.writeRect8BPP(250, 400, 40, 25,  pb, palette);
+
+
+    for (int i = 0; i < 1000; i++) pixel_data[i] = BLUE;
+    tft.writeRect(400, 400, 40, 25,  pixel_data);
+
+
 
 
     tft.writeRect1BPP(75, 100, 16, 16, pict1bpp, palette);
